@@ -1,0 +1,351 @@
+---
+title: "Appendix to 'An exploratory evaluation of forecasted changes in sea surface temperature and sea ice in the Domain 1 Marine Protected Area'"
+author: "Lucas Krüger, Francisco Santa Cruz, Lorena Rebolledo,César Cárdenas"
+date: "`r Sys.Date()`"
+output: html_document
+---
+
+Evaluate changes of sea surface temperature and sea ice cover within the Domain 1 Marine Protected Area Proposition using CMIP6 data for present observations (1986 to 2005), and future forecasted projections for Medium Term (2041-2060) and Long Term (2081-2100). This evaluation had the goal of starting a preliminary exploratory analysis to: identify climate stable areas that might act as biodiversity refuges; identify future suitable areas for fishing activities and; identify vulnerable areas for climate change effects.
+
+
+
+```{r, echo=FALSE}
+
+library(sf)
+library(terra)
+library(ggplot2)
+library(patchwork)
+library(dplyr)
+library(reshape2)
+library(raster)
+library(ggsignif)
+library(wPerm)
+```
+
+
+load IPCC WGI Interactive atlas data previously downloaded from https://interactive-atlas.ipcc.ch/
+
+Raw Data and Data Description in Iturbide et al. 2021 and 2022, Gutierrez et al. 2021.;  data processing for ensembling in https://github.com/IPCC-WG1/Atlas.git 
+
+Iturbide, M., Fernández, J., Gutiérrez, J.M. et al. Implementation of FAIR principles in the IPCC: the WGI AR6 Atlas repository. Sci Data 9, 629 (2022). https://doi.org/10.1038/s41597-022-01739-y
+
+
+Iturbide, Maialen, Fernández, Jesús, Gutiérrez, José Manuel, Bedia, Joaquín, Cimadevilla, Ezequiel, Díez-Sierra, Javier, Manzanas, Rodrigo, Casanueva, Ana, Baño-Medina, Jorge, Milovac, Josipa, Herrera, Sixto, Cofiño, Antonio S., San Martín, Daniel, García-Díez, Markel, Hauser, Mathias, Huard, David, & Yelekci, Özge. (2021). Repository supporting the implementation of FAIR principles in the IPCC-WGI Atlas (v2.0-final). Zenodo. https://doi.org/10.5281/zenodo.5171760
+
+Gutiérrez, J.M., R.G. Jones, G.T. Narisma, L.M. Alves, M. Amjad, I.V. Gorodetskaya, M. Grose, N.A.B. Klutse, S.
+Krakovska, J. Li, D. Martínez-Castro, L.O. Mearns, S.H. Mernild, T. Ngo-Duc, B. van den Hurk, and J.-H. Yoon,
+2021: Atlas. In Climate Change 2021: The Physical Science Basis. Contribution of Working Group I to the Sixth
+Assessment Report of the Intergovernmental Panel on Climate Change [Masson-Delmotte, V., P. Zhai, A. Pirani,
+S.L. Connors, C. Péan, S. Berger, N.  Caud, Y. Chen, L. Goldfarb, M.I. Gomis, M. Huang, K. Leitzell, E. Lonnoy,
+J.B.R. Matthews, T.K. Maycock, T. Waterfield, O. Yelekçi, R. Yu, and B. Zhou (eds.)]. Cambridge University Press,
+Cambridge, United Kingdom and New York, NY, USA, pp. 1927–2058, doi:10.1017/9781009157896.021.
+
+
+
+```{r echo=TRUE}
+#sea ice cover (SIC), seas surface temperature (SST) and surface wind speed (SWS)
+
+sic<-rast("D:/IPCCatlas/Present (1986-2005)/SIC.tiff")
+sst<-rast("D:/IPCCatlas/Present (1986-2005)/SST.tiff")
+
+
+#MT for Medium Term (2041-2060) and Shared Socio-economical Pathways SSP scenarios 1,2,3 & 5
+
+sic_MT1<-rast("D:/IPCCatlas/Medium Term (2041-2060)/SSP1/SIC.tiff")
+sst_MT1<-rast("D:/IPCCatlas/Medium Term (2041-2060)/SSP1/SST.tiff")
+
+
+sic_MT2<-rast("D:/IPCCatlas/Medium Term (2041-2060)/SSP2/SIC.tiff") 
+sst_MT2<-rast("D:/IPCCatlas/Medium Term (2041-2060)/SSP2/SST.tiff")
+
+
+sic_MT3<-rast("D:/IPCCatlas/Medium Term (2041-2060)/SSP3/SIC.tiff") 
+sst_MT3<-rast("D:/IPCCatlas/Medium Term (2041-2060)/SSP3/SST.tiff")
+
+
+sic_MT5<-rast("D:/IPCCatlas/Medium Term (2041-2060)/SSP5/SIC.tiff") 
+sst_MT5<-rast("D:/IPCCatlas/Medium Term (2041-2060)/SSP5/SST.tiff")
+
+
+# LT for  Long Term (2081-2100) and SSP scenarios 1,2,3 & 5
+
+sic_LT1<-rast("D:/IPCCatlas/Long Term (2081-2100)/SSP1/SIC.tiff")
+sst_LT1<-rast("D:/IPCCatlas/Long Term (2081-2100)/SSP1/SST.tiff")
+
+
+sic_LT2<-rast("D:/IPCCatlas/Long Term (2081-2100)/SSP2/SIC.tiff") 
+sst_LT2<-rast("D:/IPCCatlas/Long Term (2081-2100)/SSP2/SST.tiff")
+
+
+sic_LT3<-rast("D:/IPCCatlas/Long Term (2081-2100)/SSP3/SIC.tiff") 
+sst_LT3<-rast("D:/IPCCatlas/Long Term (2081-2100)/SSP3/SST.tiff")
+
+
+sic_LT5<-rast("D:/IPCCatlas/Long Term (2081-2100)/SSP5/SIC.tiff") 
+sst_LT5<-rast("D:/IPCCatlas/Long Term (2081-2100)/SSP5/SST.tiff")
+
+
+names(sic_MT1)<-"SIC_MT1"
+names(sst_MT1)<-"SST_MT1"
+
+names(sic_MT2)<-"SIC_MT2"
+names(sst_MT2)<-"SST_MT2"
+
+names(sic_MT3)<-"SIC_MT3"
+names(sst_MT3)<-"SST_MT3"
+
+
+names(sic_MT5)<-"SIC_MT5"
+names(sst_MT5)<-"SST_MT5"
+
+names(sic_LT1)<-"SIC_LT1"
+names(sst_LT1)<-"SST_LT1"
+
+names(sic_LT2)<-"SIC_LT2"
+names(sst_LT2)<-"SST_LT2"
+
+names(sic_LT3)<-"SIC_LT3"
+names(sst_LT3)<-"SST_LT3"
+
+names(sic_LT5)<-"SIC_LT5"
+names(sst_LT5)<-"SST_LT5"
+
+
+# stack objects 
+sic.st<-c(sic,
+          sic_MT1,sic_MT2,sic_MT3,sic_MT5,
+          
+          sic_LT1,sic_LT2,sic_LT3,sic_LT5)
+
+sst.st<-c(sst,
+         
+         sst_MT1,sst_MT2,sst_MT3,sst_MT5,
+         
+         sst_LT1, sst_LT2,sst_LT3,sst_LT5)
+
+
+```
+
+## Domain 1 Marine Protected Area shapefile and points
+
+D1MPA Vertices from https://github.com/drlucaskruger/D1MPA_Vertices.git
+
+
+```{r, echo=FALSE}
+
+crs<-crs(sic) # coordinate reference system 
+
+d1mpa<-read.csv("D1MPA_points.csv")  # points for sampling SST and SIC
+
+d1sf<-vect(d1mpa,crs=crs,geom=c("Long","Lat")) # convert to spatial vector 
+
+shp<-shapefile("D:/D1MPA/D1MPA from vertices/D1MPA_Vertices/D1MPA_Vertices_2023.shp") # D1MPA shapefile for plotting
+
+shp2<-spTransform(shp,CRSobj = crs) # convert to EPSG 4326 WGS84
+
+shpline<-as(shp2,"SpatialLinesDataFrame") # convert to line
+
+saveRDS(shpline,"D1MPA_contourline.Rds")
+
+```
+
+Extract SST and SIC values to D1MPA points and process dataframe for analysis
+
+```{r,echo=TRUE}
+
+sicv<-terra::extract(sic.st,d1sf,method="simple")
+sstv<-terra::extract(sst.st,d1sf,method="simple")
+
+sicdf<-data.frame(sicv,d1mpa[2:4])
+sstdf<-data.frame(sstv,d1mpa[2:4])
+
+head(sicdf)
+
+sstN<-subset(sstdf,Sector!="SWAP")
+sstS<-subset(sstdf,Sector=="SWAP")
+sicN<-subset(sicdf,Sector!="SWAP")
+sicS<-subset(sicdf,Sector=="SWAP")
+
+
+### sea surface temperature 
+
+# north 
+ptmN1<-perm.paired.loc(sstN$SST,sstN$SST_MT1,variable="SST change",alternative = "two.sided",R=999,parameter= mean)
+ptmN2<-perm.paired.loc(sstN$SST,sstN$SST_MT2,variable="SST change",alternative = "two.sided",R=999,parameter= mean)
+ptmN3<-perm.paired.loc(sstN$SST,sstN$SST_MT3,variable="SST change",alternative = "two.sided",R=999,parameter= mean)
+ptmN5<-perm.paired.loc(sstN$SST,sstN$SST_MT5,variable="SST change",alternative = "two.sided",R=999,parameter= mean)
+
+ptlN1<-perm.paired.loc(sstN$SST,sstN$SST_LT1,variable="SST change",alternative = "two.sided",R=999,parameter= mean)
+ptlN2<-perm.paired.loc(sstN$SST,sstN$SST_LT2,variable="SST change",alternative = "two.sided",R=999,parameter= mean)
+ptlN3<-perm.paired.loc(sstN$SST,sstN$SST_LT3,variable="SST change",alternative = "two.sided",R=999,parameter= mean)
+ptlN5<-perm.paired.loc(sstN$SST,sstN$SST_LT5,variable="SST change",alternative = "two.sided",R=999,parameter= mean)
+
+# south
+
+ptmS1<-perm.paired.loc(sstS$SST,sstS$SST_MT1,variable="SST change",alternative = "two.sided",R=999,parameter= mean)
+ptmS2<-perm.paired.loc(sstS$SST,sstS$SST_MT2,variable="SST change",alternative = "two.sided",R=999,parameter= mean)
+ptmS3<-perm.paired.loc(sstS$SST,sstS$SST_MT3,variable="SST change",alternative = "two.sided",R=999,parameter= mean)
+ptmS5<-perm.paired.loc(sstS$SST,sstS$SST_MT5,variable="SST change",alternative = "two.sided",R=999,parameter= mean)
+
+ptlS1<-perm.paired.loc(sstS$SST,sstS$SST_LT1,variable="SST change",alternative = "two.sided",R=999,parameter= mean)
+ptlS2<-perm.paired.loc(sstS$SST,sstS$SST_LT2,variable="SST change",alternative = "two.sided",R=999,parameter= mean)
+ptlS3<-perm.paired.loc(sstS$SST,sstS$SST_LT3,variable="SST change",alternative = "two.sided",R=999,parameter= mean)
+ptlS5<-perm.paired.loc(sstS$SST,sstS$SST_LT5,variable="SST change",alternative = "two.sided",R=999,parameter= mean)
+
+
+### sea ice cover 
+
+# north 
+psmN1<-perm.paired.loc(sicN$SIC,sicN$SIC_MT1,variable="SST change",alternative = "two.sided",R=999,parameter= mean)
+psmN2<-perm.paired.loc(sicN$SIC,sicN$SIC_MT2,variable="SST change",alternative = "two.sided",R=999,parameter= mean)
+psmN3<-perm.paired.loc(sicN$SIC,sicN$SIC_MT3,variable="SST change",alternative = "two.sided",R=999,parameter= mean)
+psmN5<-perm.paired.loc(sicN$SIC,sicN$SIC_MT5,variable="SST change",alternative = "two.sided",R=999,parameter= mean)
+
+pslN1<-perm.paired.loc(sicN$SIC,sicN$SIC_LT1,variable="SST change",alternative = "two.sided",R=999,parameter= mean)
+pslN2<-perm.paired.loc(sicN$SIC,sicN$SIC_LT2,variable="SST change",alternative = "two.sided",R=999,parameter= mean)
+pslN3<-perm.paired.loc(sicN$SIC,sicN$SIC_LT3,variable="SST change",alternative = "two.sided",R=999,parameter= mean)
+pslN5<-perm.paired.loc(sicN$SIC,sicN$SIC_LT5,variable="SST change",alternative = "two.sided",R=999,parameter= mean)
+
+# south
+
+psmS1<-perm.paired.loc(sicS$SIC,sicS$SIC_MT1,variable="SST change",alternative = "two.sided",R=999,parameter= mean)
+psmS2<-perm.paired.loc(sicS$SIC,sicS$SIC_MT2,variable="SST change",alternative = "two.sided",R=999,parameter= mean)
+psmS3<-perm.paired.loc(sicS$SIC,sicS$SIC_MT3,variable="SST change",alternative = "two.sided",R=999,parameter= mean)
+psmS5<-perm.paired.loc(sicS$SIC,sicS$SIC_MT5,variable="SST change",alternative = "two.sided",R=999,parameter= mean)
+
+pslS1<-perm.paired.loc(sicS$SIC,sicS$SIC_LT1,variable="SST change",alternative = "two.sided",R=999,parameter= mean)
+pslS2<-perm.paired.loc(sicS$SIC,sicS$SIC_LT2,variable="SST change",alternative = "two.sided",R=999,parameter= mean)
+pslS3<-perm.paired.loc(sicS$SIC,sicS$SIC_LT3,variable="SST change",alternative = "two.sided",R=999,parameter= mean)
+pslS5<-perm.paired.loc(sicS$SIC,sicS$SIC_LT5,variable="SST change",alternative = "two.sided",R=999,parameter= mean)
+
+
+tchange<-rbind(
+data.frame(SSP="SSP1",Sector="N",Term="MT",diff=ptmN1$Observed,p.val=ptmN1$p.value),
+data.frame(SSP="SSP2",Sector="N",Term="MT",diff=ptmN2$Observed,p.val=ptmN2$p.value),
+data.frame(SSP="SSP3",Sector="N",Term="MT",diff=ptmN3$Observed,p.val=ptmN3$p.value),
+data.frame(SSP="SSP5",Sector="N",Term="MT",diff=ptmN5$Observed,p.val=ptmN5$p.value),
+
+data.frame(SSP="SSP1",Sector="N",Term="LT",diff=ptlN1$Observed,p.val=ptlN1$p.value),
+data.frame(SSP="SSP2",Sector="N",Term="LT",diff=ptlN2$Observed,p.val=ptlN2$p.value),
+data.frame(SSP="SSP3",Sector="N",Term="LT",diff=ptlN3$Observed,p.val=ptlN3$p.value),
+data.frame(SSP="SSP5",Sector="N",Term="LT",diff=ptlN5$Observed,p.val=ptlN5$p.value),
+
+data.frame(SSP="SSP1",Sector="S",Term="MT",diff=ptmS1$Observed,p.val=ptmS1$p.value),
+data.frame(SSP="SSP2",Sector="S",Term="MT",diff=ptmS2$Observed,p.val=ptmS2$p.value),
+data.frame(SSP="SSP3",Sector="S",Term="MT",diff=ptmS3$Observed,p.val=ptmS3$p.value),
+data.frame(SSP="SSP5",Sector="S",Term="MT",diff=ptmS5$Observed,p.val=ptmS5$p.value),
+
+data.frame(SSP="SSP1",Sector="S",Term="LT",diff=ptlS1$Observed,p.val=ptlS1$p.value),
+data.frame(SSP="SSP2",Sector="S",Term="LT",diff=ptlS2$Observed,p.val=ptlS2$p.value),
+data.frame(SSP="SSP3",Sector="S",Term="LT",diff=ptlS3$Observed,p.val=ptlS3$p.value),
+data.frame(SSP="SSP5",Sector="S",Term="LT",diff=ptlS5$Observed,p.val=ptlS5$p.value))
+
+summary(tchange$p.val)
+
+
+schange<-rbind(
+data.frame(SSP="SSP1",Sector="N",Term="MT",diff=psmN1$Observed,p.val=psmN1$p.value),
+data.frame(SSP="SSP2",Sector="N",Term="MT",diff=psmN2$Observed,p.val=psmN2$p.value),
+data.frame(SSP="SSP3",Sector="N",Term="MT",diff=psmN3$Observed,p.val=psmN3$p.value),
+data.frame(SSP="SSP5",Sector="N",Term="MT",diff=psmN5$Observed,p.val=psmN5$p.value),
+
+data.frame(SSP="SSP1",Sector="N",Term="LT",diff=pslN1$Observed,p.val=pslN1$p.value),
+data.frame(SSP="SSP2",Sector="N",Term="LT",diff=pslN2$Observed,p.val=pslN2$p.value),
+data.frame(SSP="SSP3",Sector="N",Term="LT",diff=pslN3$Observed,p.val=pslN3$p.value),
+data.frame(SSP="SSP5",Sector="N",Term="LT",diff=pslN5$Observed,p.val=pslN5$p.value),
+
+data.frame(SSP="SSP1",Sector="S",Term="MT",diff=psmS1$Observed,p.val=psmS1$p.value),
+data.frame(SSP="SSP2",Sector="S",Term="MT",diff=psmS2$Observed,p.val=psmS2$p.value),
+data.frame(SSP="SSP3",Sector="S",Term="MT",diff=psmS3$Observed,p.val=psmS3$p.value),
+data.frame(SSP="SSP5",Sector="S",Term="MT",diff=psmS5$Observed,p.val=psmS5$p.value),
+
+data.frame(SSP="SSP1",Sector="S",Term="LT",diff=pslS1$Observed,p.val=pslS1$p.value),
+data.frame(SSP="SSP2",Sector="S",Term="LT",diff=pslS2$Observed,p.val=pslS2$p.value),
+data.frame(SSP="SSP3",Sector="S",Term="LT",diff=pslS3$Observed,p.val=pslS3$p.value),
+data.frame(SSP="SSP5",Sector="S",Term="LT",diff=pslS5$Observed,p.val=pslS5$p.value))
+
+summary(schange$p.val)
+
+tchange$change<-tchange$diff*(-1) # difference is the current - future
+schange$change<-schange$diff*(-1) # difference is the current - future
+
+
+tchange$Term<-factor(tchange$Term,levels=c("MT","LT"))
+schange$Term<-factor(schange$Term,levels=c("MT","LT"))
+
+tchange$Year[tchange$Term=="MT"]<-"2041-2060"
+tchange$Year[is.na(tchange$Year)]<-"2081-2100"
+
+schange$Year[schange$Term=="MT"]<-"2041-2060"
+schange$Year[is.na(schange$Year)]<-"2081-2100"
+
+
+(ggplot(tchange,aes(Year,change,fill=Sector))+geom_boxplot()+theme_bw()+
+  ylab("°C")+
+  scale_fill_manual(values=c("red","lightblue"))+
+    ggtitle("a. Mean SST change"))+
+  
+(ggplot(schange,aes(Year,change,fill=Sector))+geom_boxplot()+theme_bw()+
+  ylab("%")+
+  scale_fill_manual(values=c("red","lightblue"))+
+   ggtitle("b. Mean SIC change"))
+
+```
+
+
+
+Mapping
+
+
+
+```{r,echo=TRUE}
+
+
+library(reshape2)
+msic<-melt(sicdf,id.vars=c("ID","Long","Lat","Sector","SIC"))
+msst<-melt(sstdf,id.vars=c("ID","Long","Lat","Sector","SST"))
+
+mdf<-data.frame(msic[2:4],
+                Term=substring(msic$variable,first=5,last=6),
+                SSP=substring(msic$variable,first=7,last=7),
+                SIC=msic$SIC,
+                SICproj=msic$value,
+                SST=msst$SST,SSTproj=msst$value)
+
+
+mdf$Sector[mdf$Sector=="SOI" | mdf$Sector=="NWAP"]<-"NSOI" #NorthWestern Antarctic Peninsula and South Orkney Island together
+
+
+mdf$Term<-factor(mdf$Term,levels=c("MT","LT"))
+
+mdf$sic.ch<-mdf$SICproj-mdf$SIC
+mdf$sst.ch<-mdf$SSTproj-mdf$SST
+
+mdf$SSP[mdf$SSP=="1"]<-"SSP 1"
+mdf$SSP[mdf$SSP=="2"]<-"SSP 2"
+mdf$SSP[mdf$SSP=="3"]<-"SSP 3"
+mdf$SSP[mdf$SSP=="5"]<-"SSP 5"
+
+mdf$ss<-paste(mdf$Sector,mdf$SSP)
+
+
+
+
+mdf2<-subset(mdf,SSP!="SSP 1") # subset only scenarios 2,3 and 5
+
+
+(ggplot()+geom_raster(data=mdf2,aes(x=Long,y=Lat,fill=sst.ch))+
+  scale_fill_distiller(palette = "Spectral",direction=-1,name="°C change")+
+  geom_path(data=shpline,aes(x = long, y = lat, group = group))+
+    coord_quickmap()+theme_bw()+facet_wrap(Term~.)+xlab("Longitude")+ylab("Latitude")+
+  ggtitle(label="a. Medium and long Term change in SST"))/
+
+
+
+(ggplot()+geom_raster(data=mdf2,aes(x=Long,y=Lat,fill=sic.ch))+
+  scale_fill_distiller(palette = "Spectral",direction=+1,name="% change")+
+  geom_path(data=shpline,aes(x = long, y = lat, group = group))+
+  coord_quickmap()+theme_bw()+facet_wrap(Term~.)+xlab("Longitude")+ylab("Latitude")+
+  ggtitle(label="b. Medium and long Term change in SIC"))
+
+```
